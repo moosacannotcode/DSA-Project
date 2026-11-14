@@ -55,7 +55,7 @@ int main() {
 
         // Draw
         BeginDrawing();
-        ClearBackground(RED);
+        ClearBackground(BLUE);
 
         ball.draw();
 
