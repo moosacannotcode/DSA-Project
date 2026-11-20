@@ -1,7 +1,6 @@
-#include "raylib.h"
-#pragma once
-#include <cmath>
 
+#include "raylib.h"
+#include <cmath>
 
 int main()
 {
@@ -11,13 +10,14 @@ int main()
     SetTargetFPS(60);
 
     Texture2D player = LoadTexture("media and assets/masked_figure_transparent.png");
+    Texture2D background = LoadTexture("media and assets/temp_gb.png");
 
-    // Check if image loaded
     bool imageLoaded = (player.id != 0);
 
     float scale = 0.25f;
+    float backgroundScale = 0.625f;
 
-    // Calculate scaled dimensions
+    // Calculate scaled player dimensions
     float playerWidth = player.width * scale;
     float playerHeight = player.height * scale;
 
@@ -32,17 +32,11 @@ int main()
     {
         if (imageLoaded)
         {
-            // Move left
             if (IsKeyDown(KEY_LEFT))
-            {
                 playerX -= playerSpeed;
-            }
 
-            // Move right
             if (IsKeyDown(KEY_RIGHT))
-            {
                 playerX += playerSpeed;
-            }
 
             // Screen boundaries
             if (playerX < 0)
@@ -55,12 +49,19 @@ int main()
         // Drawing
         BeginDrawing();
 
-        ClearBackground(DARKGRAY);
+        ClearBackground(BLACK);
+        DrawTexturePro(
+           background,
+           {0, 0, (float)background.width, (float)background.height},
+            {0, 0, 1280, 800},
+            {0, 0},
+                  0,
+                 WHITE
+        );
 
         if (imageLoaded)
         {
             Vector2 position = {playerX, playerY};
-
             DrawTextureEx(player, position, 0.0f, scale, WHITE);
         }
         else
@@ -70,6 +71,8 @@ int main()
 
         EndDrawing();
     }
+
+    UnloadTexture(background);
 
     if (imageLoaded)
         UnloadTexture(player);
