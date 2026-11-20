@@ -1,6 +1,8 @@
+#include <iostream>
 #include "raylib.h"
 #pragma once
 #include <cmath>
+using namespace std;
 
 class Bullet //simple linkedlist for bullet
 {
