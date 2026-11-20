@@ -310,13 +310,7 @@ int main()
         }
         else
         {
-            DrawText(
-                "IMAGE FAILED TO LOAD!",
-                400,
-                350,
-                30,
-                RED
-            );
+            DrawText("IMAGE FAILED TO LOAD!",400,350,30,RED);
         }
 
 
@@ -325,20 +319,11 @@ int main()
 
 
         // Optional: Display controls
-        DrawText(
-            "UP/DOWN: Move",
-            20,
-            20,
-            20,
-            WHITE
+        DrawText("UP/DOWN: Move",20,20,20,WHITE
         );
 
         DrawText(
-            "SPACE: Shoot",
-            20,
-            50,
-            20,
-            WHITE
+            "SPACE: Shoot",20,50,20,WHITE
         );
 
 
