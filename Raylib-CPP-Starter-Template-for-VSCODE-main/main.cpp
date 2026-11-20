@@ -2,6 +2,168 @@
 #include <cmath>
 
 // ==========================================
+// SCREEN SETTINGS
+// ==========================================
+
+const int SCREEN_WIDTH = 1280;
+const int SCREEN_HEIGHT = 800;
+
+// ==========================================
+// MONSTER CLASS
+// ==========================================
+
+class Monster
+{
+public:
+    Rectangle position;
+    float speed;
+    int health;
+    bool hasBeenHit;
+    Monster* next;
+
+    Monster(Texture2D texture)
+    {
+        position = { (float)SCREEN_WIDTH + 50, (float)GetRandomValue(50, SCREEN_HEIGHT - 150), 100, 100 };
+        speed = (float)GetRandomValue(100, 180);
+        health = 100;
+        hasBeenHit = false;
+        next = nullptr;
+    }
+
+    void Update(float dt)
+    {
+        position.x -= speed * dt;
+    }
+
+    void Draw(Texture2D texture)
+    {
+        DrawTexturePro(texture, {0, 0, (float)texture.width, (float)texture.height}, position, {0, 0}, 0, WHITE);
+
+        if (hasBeenHit)
+        {
+            DrawRectangle((int)position.x, (int)position.y - 12, (int)position.width, 8, DARKGRAY);
+            DrawRectangle((int)position.x, (int)position.y - 12, (int)(position.width * ((float)health / 100)), 8, RED);
+        }
+    }
+};
+
+// ==========================================
+// MONSTER LINKED LIST
+// ==========================================
+
+class MonsterList
+{
+private:
+    Monster* head;
+
+public:
+    MonsterList()
+    {
+        head = nullptr;
+    }
+
+    void Spawn(Texture2D texture)
+    {
+        Monster* newMonster = new Monster(texture);
+        newMonster->next = head;
+        head = newMonster;
+    }
+
+    void Update(float dt, Rectangle playerRectangle, int& playerDamage)
+    {
+        Monster** current = &head;
+
+        while (*current != nullptr)
+        {
+            Monster* monster = *current;
+
+            monster->Update(dt);
+
+            if (CheckCollisionRecs(monster->position, playerRectangle))
+            {
+                playerDamage++;
+
+                *current = monster->next;
+                delete monster;
+            }
+            else if (monster->position.x + monster->position.width < 0)
+            {
+                *current = monster->next;
+                delete monster;
+            }
+            else
+            {
+                current = &((*current)->next);
+            }
+        }
+    }
+
+    bool Hit(Rectangle bulletRectangle)
+    {
+        Monster* current = head;
+
+        while (current != nullptr)
+        {
+            if (CheckCollisionRecs(current->position, bulletRectangle))
+            {
+                current->health -= 25;
+                current->hasBeenHit = true;
+
+                if (current->health <= 0)
+                    return true;
+
+                return true;
+            }
+
+            current = current->next;
+        }
+
+        return false;
+    }
+
+    void RemoveDeadMonsters()
+    {
+        Monster** current = &head;
+
+        while (*current != nullptr)
+        {
+            Monster* monster = *current;
+
+            if (monster->health <= 0)
+            {
+                *current = monster->next;
+                delete monster;
+            }
+            else
+            {
+                current = &((*current)->next);
+            }
+        }
+    }
+
+    void Draw(Texture2D texture)
+    {
+        Monster* current = head;
+
+        while (current != nullptr)
+        {
+            current->Draw(texture);
+            current = current->next;
+        }
+    }
+
+    ~MonsterList()
+    {
+        while (head != nullptr)
+        {
+            Monster* temp = head;
+            head = head->next;
+            delete temp;
+        }
+    }
+};
+
+// ==========================================
 // BULLET CLASS
 // ==========================================
 
@@ -10,10 +172,8 @@ class Bullet
 public:
     Vector2 position;
     Vector2 velocity;
-
     Bullet* next;
 
-    // Constructor
     Bullet(Vector2 pos, Vector2 vel)
     {
         position = pos;
@@ -21,20 +181,17 @@ public:
         next = nullptr;
     }
 
-    // Update bullet position
     void Update(float dt)
     {
         position.x += velocity.x * dt;
         position.y += velocity.y * dt;
     }
 
-    // Draw bullet
     void Draw()
     {
-        DrawCircleV(position, 5, YELLOW);
+        DrawCircleV(position, 5, LIME);
     }
 };
-
 
 // ==========================================
 // BULLET LINKED LIST
@@ -46,48 +203,31 @@ private:
     Bullet* head;
 
 public:
-
-    // Constructor
     BulletList()
     {
         head = nullptr;
     }
 
-    // Shoot a bullet and insert it into the linked list
     void Shoot(Vector2 gunPosition, Vector2 target)
     {
-        Vector2 direction = {
-            target.x - gunPosition.x,
-            target.y - gunPosition.y
-        };
+        Vector2 direction = {target.x - gunPosition.x, target.y - gunPosition.y};
 
-        float length = std::sqrt(
-            direction.x * direction.x +
-            direction.y * direction.y
-        );
+        float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
         if (length == 0)
             return;
 
-        // Normalize direction
         direction.x /= length;
         direction.y /= length;
 
-        // Bullet velocity
-        Vector2 velocity = {
-            direction.x * 500,
-            direction.y * 500
-        };
+        Vector2 velocity = {direction.x * 650, direction.y * 650};
 
-        // Create new bullet node
         Bullet* newBullet = new Bullet(gunPosition, velocity);
 
-        // Insert at head of linked list
         newBullet->next = head;
         head = newBullet;
     }
 
-    // Update all bullets
     void Update(float dt)
     {
         Bullet* current = head;
@@ -95,12 +235,54 @@ public:
         while (current != nullptr)
         {
             current->Update(dt);
-
             current = current->next;
         }
     }
 
-    // Draw all bullets
+    void CheckMonsterCollisions(MonsterList& monsters)
+    {
+        Bullet** current = &head;
+
+        while (*current != nullptr)
+        {
+            Bullet* bullet = *current;
+
+            Rectangle bulletRectangle = {bullet->position.x - 5, bullet->position.y - 5, 10, 10};
+
+            if (monsters.Hit(bulletRectangle))
+            {
+                *current = bullet->next;
+                delete bullet;
+            }
+            else
+            {
+                current = &((*current)->next);
+            }
+        }
+
+        monsters.RemoveDeadMonsters();
+    }
+
+    void RemoveBullets()
+    {
+        Bullet** current = &head;
+
+        while (*current != nullptr)
+        {
+            Bullet* bullet = *current;
+
+            if (bullet->position.x < 0 || bullet->position.x > SCREEN_WIDTH || bullet->position.y < 0 || bullet->position.y > SCREEN_HEIGHT)
+            {
+                *current = bullet->next;
+                delete bullet;
+            }
+            else
+            {
+                current = &((*current)->next);
+            }
+        }
+    }
+
     void Draw()
     {
         Bullet* current = head;
@@ -108,52 +290,20 @@ public:
         while (current != nullptr)
         {
             current->Draw();
-
             current = current->next;
         }
     }
 
-    // Remove bullets outside screen
-    void RemoveBullets()
-    {
-        Bullet** current = &head;
-
-        while (*current != nullptr)
-        {
-            Bullet* temp = *current;
-
-            if (temp->position.x < 0 ||
-                temp->position.x > GetScreenWidth() ||
-                temp->position.y < 0 ||
-                temp->position.y > GetScreenHeight())
-            {
-                // Remove node
-                *current = temp->next;
-
-                delete temp;
-            }
-            else
-            {
-                // Move to next node
-                current = &((*current)->next);
-            }
-        }
-    }
-
-    // Destructor
     ~BulletList()
     {
         while (head != nullptr)
         {
             Bullet* temp = head;
-
             head = head->next;
-
             delete temp;
         }
     }
 };
-
 
 // ==========================================
 // MAIN GAME
@@ -161,36 +311,35 @@ public:
 
 int main()
 {
-    // Initialize window
-    InitWindow(1280, 800, "Game screen");
-
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
     SetTargetFPS(60);
 
+    Texture2D player = LoadTexture("media and assets/masked_figure_transparent.png");
+    Texture2D background = LoadTexture("media and assets/temp_gb.png");
+
+    Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
+
+    bool playerImageLoaded = player.id != 0;
+    bool backgroundLoaded = background.id != 0;
+    bool monsterImageLoaded = monsterTexture.id != 0;
 
     // ======================================
     // PLAYER
     // ======================================
 
-    Texture2D player = LoadTexture(
-        "D:/Uni stuff/dsa shoota/DSA-Project-main/DSA-Project-main/media and assets/masked_figure_transparent.png"
-    );
+    float playerScale = 0.25f;
+    float playerWidth = player.width * playerScale;
+    float playerHeight = player.height * playerScale;
 
-    // Check if image loaded
-    bool imageLoaded = (player.id != 0);
-
-    float scale = 0.25f;
-
-    // Calculate scaled dimensions
-    float playerWidth = player.width * scale;
-    float playerHeight = player.height * scale;
-
-    // Player position
     float playerX = 20.0f;
+    float playerY = SCREEN_HEIGHT - playerHeight;
 
-    float playerY = 800 - playerHeight;
+    float playerSpeed = 300.0f;
 
-    float playerSpeed = 5.0f;
+    int playerHealth = 100;
+    int maxPlayerHealth = 100;
 
+    float playerDamageCooldown = 0.0f;
 
     // ======================================
     // BULLETS
@@ -198,11 +347,17 @@ int main()
 
     BulletList bullets;
 
-    // Shooting cooldown
     float shootTimer = 0.0f;
-
     float shootCooldown = 0.2f;
 
+    // ======================================
+    // MONSTERS
+    // ======================================
+
+    MonsterList monsters;
+
+    float monsterSpawnTimer = 0.0f;
+    float monsterSpawnInterval = 2.0f;
 
     // ======================================
     // GAME LOOP
@@ -210,42 +365,27 @@ int main()
 
     while (!WindowShouldClose())
     {
-        // Delta time
         float dt = GetFrameTime();
 
-        // Update shooting timer
         shootTimer -= dt;
-
+        monsterSpawnTimer -= dt;
+        playerDamageCooldown -= dt;
 
         // ==================================
         // PLAYER MOVEMENT
         // ==================================
 
-        if (imageLoaded)
+        if (playerHealth > 0)
         {
-            // Move up
-            if (IsKeyDown(KEY_UP))
-            {
-                playerY -= playerSpeed;
-            }
+            if (IsKeyDown(KEY_LEFT)) playerX -= playerSpeed * dt;
+            if (IsKeyDown(KEY_RIGHT)) playerX += playerSpeed * dt;
+            if (IsKeyDown(KEY_UP)) playerY -= playerSpeed * dt;
+            if (IsKeyDown(KEY_DOWN)) playerY += playerSpeed * dt;
 
-            // Move down
-            if (IsKeyDown(KEY_DOWN))
-            {
-                playerY += playerSpeed;
-            }
-
-            // Screen boundaries
-            if (playerY < 0)
-            {
-                playerY = 0;
-            }
-
-            if (playerY > 800 - playerHeight)
-            {
-                playerY = 800 - playerHeight;
-            }
-
+            if (playerX < 0) playerX = 0;
+            if (playerX > SCREEN_WIDTH - playerWidth) playerX = SCREEN_WIDTH - playerWidth;
+            if (playerY < 0) playerY = 0;
+            if (playerY > SCREEN_HEIGHT - playerHeight) playerY = SCREEN_HEIGHT - playerHeight;
 
             // ==================================
             // SHOOTING
@@ -253,92 +393,142 @@ int main()
 
             if (IsKeyDown(KEY_SPACE) && shootTimer <= 0)
             {
-                // Bullet starts at the right side of player
-                Vector2 gunPosition = {
-                    playerX + playerWidth,
-                    playerY + playerHeight / 2.0f
-                };
+                Vector2 gunPosition = {playerX + playerWidth, playerY + playerHeight / 2.0f};
+                Vector2 target = {gunPosition.x + 1, gunPosition.y};
 
-                // Target directly to the right
-                Vector2 target = {
-                    gunPosition.x + 1,
-                    gunPosition.y
-                };
-
-                // Create bullet
                 bullets.Shoot(gunPosition, target);
 
-                // Reset shooting cooldown
                 shootTimer = shootCooldown;
             }
         }
 
+        // ==================================
+        // MONSTER SPAWNING
+        // ==================================
+
+        if (monsterSpawnTimer <= 0 && playerHealth > 0)
+        {
+            monsters.Spawn(monsterTexture);
+            monsterSpawnTimer = monsterSpawnInterval;
+        }
 
         // ==================================
         // BULLET UPDATES
         // ==================================
 
         bullets.Update(dt);
-
+        bullets.CheckMonsterCollisions(monsters);
         bullets.RemoveBullets();
 
+        // ==================================
+        // MONSTER UPDATES
+        // ==================================
+
+        Rectangle playerRectangle = {playerX, playerY, playerWidth, playerHeight};
+
+        int monsterDamage = 0;
+
+        monsters.Update(dt, playerRectangle, monsterDamage);
+
+        if (monsterDamage > 0 && playerDamageCooldown <= 0 && playerHealth > 0)
+        {
+            playerHealth -= 10;
+            playerDamageCooldown = 1.0f;
+        }
+
+        if (playerHealth < 0)
+            playerHealth = 0;
 
         // ==================================
         // DRAWING
         // ==================================
 
         BeginDrawing();
+        ClearBackground(BLACK);
 
-        ClearBackground(DARKGRAY);
+        // ==================================
+        // BACKGROUND
+        // ==================================
 
-
-        // Draw player
-        if (imageLoaded)
+        if (backgroundLoaded)
         {
-            Vector2 position = {
-                playerX,
-                playerY
-            };
+            DrawTexturePro(background, {0, 0, (float)background.width, (float)background.height}, {0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT}, {0, 0}, 0, WHITE);
+        }
 
-            DrawTextureEx(
-                player,
-                position,
-                0.0f,
-                scale,
-                WHITE
-            );
+        // ==================================
+        // PLAYER
+        // ==================================
+
+        if (playerImageLoaded)
+        {
+            DrawTextureEx(player, {playerX, playerY}, 0.0f, playerScale, WHITE);
         }
         else
         {
-            DrawText("IMAGE FAILED TO LOAD!",400,350,30,RED);
+            DrawRectangle((int)playerX, (int)playerY, (int)playerWidth, (int)playerHeight, BLUE);
         }
 
+        // ==================================
+        // MONSTERS
+        // ==================================
 
-        // Draw bullets
+        if (monsterImageLoaded)
+        {
+            monsters.Draw(monsterTexture);
+        }
+        else
+        {
+            DrawText("MONSTER IMAGE FAILED TO LOAD", 400, 350, 30, RED);
+        }
+
+        // ==================================
+        // BULLETS
+        // ==================================
+
         bullets.Draw();
 
+        // ==================================
+        // PLAYER HEALTH BAR
+        // ==================================
 
-        // Optional: Display controls
-        DrawText("UP/DOWN: Move",20,20,20,WHITE
-        );
+        DrawText("PLAYER HEALTH", 20, 20, 20, WHITE);
+        DrawRectangle(20, 50, 200, 20, DARKGRAY);
+        DrawRectangle(20, 50, (int)(200 * ((float)playerHealth / maxPlayerHealth)), 20, GREEN);
+        DrawRectangleLines(20, 50, 200, 20, WHITE);
 
-        DrawText(
-            "SPACE: Shoot",20,50,20,WHITE
-        );
+        DrawText(TextFormat("%i / %i", playerHealth, maxPlayerHealth), 230, 50, 20, WHITE);
 
+        // ==================================
+        // CONTROLS
+        // ==================================
+
+        DrawText("ARROW KEYS: MOVE", 20, 90, 20, WHITE);
+        DrawText("SPACE: SHOOT", 20, 120, 20, WHITE);
+
+        // ==================================
+        // GAME OVER
+        // ==================================
+
+        if (playerHealth <= 0)
+        {
+            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.65f));
+            DrawText("GAME OVER", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 - 50, 50, RED);
+        }
 
         EndDrawing();
     }
-
 
     // ======================================
     // CLEANUP
     // ======================================
 
-    if (imageLoaded)
-    {
+    UnloadTexture(background);
+
+    if (playerImageLoaded)
         UnloadTexture(player);
-    }
+
+    if (monsterImageLoaded)
+        UnloadTexture(monsterTexture);
 
     CloseWindow();
 
