@@ -1,66 +1,77 @@
-#include <iostream>
-#include <raylib.h>
+#include "raylib.h"
 
-// Ball class
-class Ball {
-private:
-    int x, y;
-    int speed_x, speed_y;
-    int radius;
+int main()
+{
+    // Initialize window
+    InitWindow(1280, 800, "Game screen");
 
-public:
-    // Constructor
-    Ball(int startX, int startY, int r) {
-        x = startX;
-        y = startY;
-        radius = r;
-        speed_x = 5;
-        speed_y = 5;
-    }
-
-    // Update movement
-    void update(int screenWidth, int screenHeight) {
-        x += speed_x;
-        y += speed_y;
-
-        // Bounce horizontally
-        if (x + radius >= screenWidth || x - radius <= 0) {
-            speed_x *= -1;
-        }
-
-        // Bounce vertically
-        if (y + radius >= screenHeight || y - radius <= 0) {
-            speed_y *= -1;
-        }
-    }
-
-    // Draw ball
-    void draw() {
-        DrawCircle(x, y, radius, PURPLE);
-    }
-};
-
-int main() {
-    const int SCREEN_WIDTH = 1000;
-    const int SCREEN_HEIGHT = 700;
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OOP Raylib Example");
     SetTargetFPS(60);
 
-    // Create object
-    Ball ball(100, 100, 15);
+    Texture2D player = LoadTexture("D:/Uni stuff/dsa shoota/DSA-Project-main/DSA-Project-main/media and assets/masked_figure_transparent.png");
 
-    while (!WindowShouldClose()) {
-        // Update
-        ball.update(SCREEN_WIDTH, SCREEN_HEIGHT);
+    // Check if image loaded
+    bool imageLoaded = (player.id != 0);
 
-        // Draw
+    float scale = 0.25f;
+
+    // Calculate scaled dimensions
+    float playerWidth = player.width * scale;
+    float playerHeight = player.height * scale;
+
+    // Player position
+    float playerX = (1280 - playerWidth) / 2.0f;
+    float playerY = 800 - playerHeight;
+
+    float playerSpeed = 5.0f;
+
+    // Game loop
+    while (!WindowShouldClose())
+    {
+        if (imageLoaded)
+        {
+            // Move left
+            if (IsKeyDown(KEY_LEFT))
+            {
+                playerX -= playerSpeed;
+            }
+
+            // Move right
+            if (IsKeyDown(KEY_RIGHT))
+            {
+                playerX += playerSpeed;
+            }
+
+            // Screen boundaries
+            if (playerX < 0)
+                playerX = 0;
+
+            if (playerX > 1280 - playerWidth)
+                playerX = 1280 - playerWidth;
+        }
+
+        // Drawing
         BeginDrawing();
-        ClearBackground(BLUE);
 
-        ball.draw();
+        ClearBackground(DARKGRAY);
+
+        if (imageLoaded)
+        {
+            Vector2 position = {playerX, playerY};
+
+            DrawTextureEx(player, position, 0.0f, scale, WHITE);
+        }
+        else
+        {
+            DrawText("IMAGE FAILED TO LOAD!", 400, 350, 30, RED);
+        }
 
         EndDrawing();
     }
 
+    if (imageLoaded)
+        UnloadTexture(player);
+
     CloseWindow();
+
+    return 0;
 }
