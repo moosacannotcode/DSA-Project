@@ -1,4 +1,7 @@
 #include "raylib.h"
+#pragma once
+#include <cmath>
+
 
 int main()
 {
@@ -7,7 +10,7 @@ int main()
 
     SetTargetFPS(60);
 
-    Texture2D player = LoadTexture("D:/Uni stuff/dsa shoota/DSA-Project-main/DSA-Project-main/media and assets/masked_figure_transparent.png");
+    Texture2D player = LoadTexture("media and assets/masked_figure_transparent.png");
 
     // Check if image loaded
     bool imageLoaded = (player.id != 0);
