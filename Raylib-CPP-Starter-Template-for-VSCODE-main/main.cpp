@@ -8,11 +8,109 @@
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 800;
 
+
+
+class Player
+{
+public:
+    Texture2D texture;
+
+    float x;
+    float y;
+    float width;
+    float height;
+    float scale;
+    float speed;
+
+    int health;
+    int maxHealth;
+
+    float damageCooldown;
+
+    Player(Texture2D playerTexture)
+    {
+        texture = playerTexture;
+
+        scale = 0.25f;
+
+        // Use the loaded texture dimensions, or a fallback size.
+        if (texture.id != 0)
+        {
+            width = texture.width * scale;
+            height = texture.height * scale;
+        }
+        else
+        {
+            width = 100;
+            height = 100;
+        }
+
+        x = 20.0f;
+        y = SCREEN_HEIGHT - height;
+
+        speed = 300.0f;
+
+        health = 100;
+        maxHealth = 100;
+
+        damageCooldown = 0.0f;
+    }
+
+    void Update(float dt)
+    {
+        damageCooldown -= dt;
+
+        if (health <= 0)
+            return;
+
+        if (IsKeyDown(KEY_LEFT))  x -= speed * dt;
+        if (IsKeyDown(KEY_RIGHT)) x += speed * dt;
+        if (IsKeyDown(KEY_UP))    y -= speed * dt;
+        if (IsKeyDown(KEY_DOWN))  y += speed * dt;
+
+        // Keep the player inside the screen.
+        if (x < 0) x = 0;
+        if (x > SCREEN_WIDTH - width) x = SCREEN_WIDTH - width;
+        if (y < 0) y = 0;
+        if (y > SCREEN_HEIGHT - height) y = SCREEN_HEIGHT - height;
+    }
+
+    void Draw()
+    {
+        if (texture.id != 0)
+        {
+            DrawTextureEx(texture, {x, y}, 0.0f, scale, WHITE);
+        }
+        else
+        {
+            DrawRectangle((int)x, (int)y, (int)width, (int)height, BLUE);
+        }
+    }
+
+    Rectangle GetRectangle()
+    {
+        return {x, y, width, height};
+    }
+
+    void TakeDamage(int amount)
+    {
+        if (health > 0 && damageCooldown <= 0)
+        {
+            health -= amount;
+
+            if (health < 0)
+                health = 0;
+
+            damageCooldown = 1.0f;
+        }
+    }
+};
+
 // ==========================================
 // MONSTER CLASS
 // ==========================================
 
-class Monster
+class Monster // monster nodes
 {
 public:
     Rectangle position;
@@ -23,7 +121,13 @@ public:
 
     Monster(Texture2D texture)
     {
-        position = { (float)SCREEN_WIDTH + 50, (float)GetRandomValue(50, SCREEN_HEIGHT - 150), 100, 100 };
+        position = {
+            (float)SCREEN_WIDTH + 50,
+            (float)GetRandomValue(50, SCREEN_HEIGHT - 150),
+            100,
+            100
+        };
+
         speed = (float)GetRandomValue(100, 180);
         health = 100;
         hasBeenHit = false;
@@ -37,12 +141,32 @@ public:
 
     void Draw(Texture2D texture)
     {
-        DrawTexturePro(texture, {0, 0, (float)texture.width, (float)texture.height}, position, {0, 0}, 0, WHITE);
+        DrawTexturePro(
+            texture,
+            {0, 0, (float)texture.width, (float)texture.height},
+            position,
+            {0, 0},
+            0,
+            WHITE
+        );
 
         if (hasBeenHit)
         {
-            DrawRectangle((int)position.x, (int)position.y - 12, (int)position.width, 8, DARKGRAY);
-            DrawRectangle((int)position.x, (int)position.y - 12, (int)(position.width * ((float)health / 100)), 8, RED);
+            DrawRectangle(
+                (int)position.x,
+                (int)position.y - 12,
+                (int)position.width,
+                8,
+                DARKGRAY
+            );
+
+            DrawRectangle(
+                (int)position.x,
+                (int)position.y - 12,
+                (int)(position.width * ((float)health / 100)),
+                8,
+                RED
+            );
         }
     }
 };
@@ -98,7 +222,7 @@ public:
         }
     }
 
-    bool Hit(Rectangle bulletRectangle)
+    bool Hit(Rectangle bulletRectangle, int bulletDamage)
     {
         Monster* current = head;
 
@@ -106,11 +230,8 @@ public:
         {
             if (CheckCollisionRecs(current->position, bulletRectangle))
             {
-                current->health -= 25;
+                current->health -= bulletDamage;
                 current->hasBeenHit = true;
-
-                if (current->health <= 0)
-                    return true;
 
                 return true;
             }
@@ -173,12 +294,14 @@ public:
     Vector2 position;
     Vector2 velocity;
     Bullet* next;
+    int damage;
 
-    Bullet(Vector2 pos, Vector2 vel)
+    Bullet(Vector2 pos, Vector2 vel, int d)
     {
         position = pos;
         velocity = vel;
         next = nullptr;
+        damage = d;
     }
 
     void Update(float dt)
@@ -210,9 +333,15 @@ public:
 
     void Shoot(Vector2 gunPosition, Vector2 target)
     {
-        Vector2 direction = {target.x - gunPosition.x, target.y - gunPosition.y};
+        Vector2 direction = {
+            target.x - gunPosition.x,
+            target.y - gunPosition.y
+        };
 
-        float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+        float length = std::sqrt(
+            direction.x * direction.x +
+            direction.y * direction.y
+        );
 
         if (length == 0)
             return;
@@ -220,9 +349,12 @@ public:
         direction.x /= length;
         direction.y /= length;
 
-        Vector2 velocity = {direction.x * 650, direction.y * 650};
+        Vector2 velocity = {
+            direction.x * 650,
+            direction.y * 650
+        };
 
-        Bullet* newBullet = new Bullet(gunPosition, velocity);
+        Bullet* newBullet = new Bullet(gunPosition, velocity, 25);
 
         newBullet->next = head;
         head = newBullet;
@@ -247,9 +379,14 @@ public:
         {
             Bullet* bullet = *current;
 
-            Rectangle bulletRectangle = {bullet->position.x - 5, bullet->position.y - 5, 10, 10};
+            Rectangle bulletRectangle = {
+                bullet->position.x - 5,
+                bullet->position.y - 5,
+                10,
+                10
+            };
 
-            if (monsters.Hit(bulletRectangle))
+            if (monsters.Hit(bulletRectangle, bullet->damage))
             {
                 *current = bullet->next;
                 delete bullet;
@@ -263,7 +400,7 @@ public:
         monsters.RemoveDeadMonsters();
     }
 
-    void RemoveBullets()
+    void RemoveBullets() // Delete bullets that move off-screen.
     {
         Bullet** current = &head;
 
@@ -271,7 +408,12 @@ public:
         {
             Bullet* bullet = *current;
 
-            if (bullet->position.x < 0 || bullet->position.x > SCREEN_WIDTH || bullet->position.y < 0 || bullet->position.y > SCREEN_HEIGHT)
+            if (
+                bullet->position.x < 0 ||
+                bullet->position.x > SCREEN_WIDTH ||
+                bullet->position.y < 0 ||
+                bullet->position.y > SCREEN_HEIGHT
+            )
             {
                 *current = bullet->next;
                 delete bullet;
@@ -314,12 +456,15 @@ int main()
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
     SetTargetFPS(60);
 
-    Texture2D player = LoadTexture("media and assets/masked_figure_transparent.png");
-    Texture2D background = LoadTexture("media and assets/temp_gb.png");
+    Texture2D playerTexture =
+        LoadTexture("media and assets/masked_figure_transparent.png");
 
-    Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
+    Texture2D background =
+        LoadTexture("media and assets/temp_gb.png");
 
-    bool playerImageLoaded = player.id != 0;
+    Texture2D monsterTexture =
+        LoadTexture("media and assets/monssterr.jpg");
+
     bool backgroundLoaded = background.id != 0;
     bool monsterImageLoaded = monsterTexture.id != 0;
 
@@ -327,19 +472,7 @@ int main()
     // PLAYER
     // ======================================
 
-    float playerScale = 0.25f;
-    float playerWidth = player.width * playerScale;
-    float playerHeight = player.height * playerScale;
-
-    float playerX = 20.0f;
-    float playerY = SCREEN_HEIGHT - playerHeight;
-
-    float playerSpeed = 300.0f;
-
-    int playerHealth = 100;
-    int maxPlayerHealth = 100;
-
-    float playerDamageCooldown = 0.0f;
+    Player player(playerTexture);
 
     // ======================================
     // BULLETS
@@ -369,44 +502,41 @@ int main()
 
         shootTimer -= dt;
         monsterSpawnTimer -= dt;
-        playerDamageCooldown -= dt;
 
         // ==================================
-        // PLAYER MOVEMENT
+        // PLAYER UPDATE
         // ==================================
 
-        if (playerHealth > 0)
+        player.Update(dt);
+
+        // ==================================
+        // SHOOTING
+        // ==================================
+
+        if (player.health > 0 &&
+            IsKeyDown(KEY_SPACE) &&
+            shootTimer <= 0)
         {
-            if (IsKeyDown(KEY_LEFT)) playerX -= playerSpeed * dt;
-            if (IsKeyDown(KEY_RIGHT)) playerX += playerSpeed * dt;
-            if (IsKeyDown(KEY_UP)) playerY -= playerSpeed * dt;
-            if (IsKeyDown(KEY_DOWN)) playerY += playerSpeed * dt;
+            Vector2 gunPosition = {
+                player.x + player.width,
+                player.y + player.height / 2.0f
+            };
 
-            if (playerX < 0) playerX = 0;
-            if (playerX > SCREEN_WIDTH - playerWidth) playerX = SCREEN_WIDTH - playerWidth;
-            if (playerY < 0) playerY = 0;
-            if (playerY > SCREEN_HEIGHT - playerHeight) playerY = SCREEN_HEIGHT - playerHeight;
+            Vector2 target = {
+                gunPosition.x + 1,
+                gunPosition.y
+            };
 
-            // ==================================
-            // SHOOTING
-            // ==================================
+            bullets.Shoot(gunPosition, target);
 
-            if (IsKeyDown(KEY_SPACE) && shootTimer <= 0)
-            {
-                Vector2 gunPosition = {playerX + playerWidth, playerY + playerHeight / 2.0f};
-                Vector2 target = {gunPosition.x + 1, gunPosition.y};
-
-                bullets.Shoot(gunPosition, target);
-
-                shootTimer = shootCooldown;
-            }
+            shootTimer = shootCooldown;
         }
 
         // ==================================
         // MONSTER SPAWNING
         // ==================================
 
-        if (monsterSpawnTimer <= 0 && playerHealth > 0)
+        if (monsterSpawnTimer <= 0 && player.health > 0)
         {
             monsters.Spawn(monsterTexture);
             monsterSpawnTimer = monsterSpawnInterval;
@@ -424,20 +554,14 @@ int main()
         // MONSTER UPDATES
         // ==================================
 
-        Rectangle playerRectangle = {playerX, playerY, playerWidth, playerHeight};
-
         int monsterDamage = 0;
 
-        monsters.Update(dt, playerRectangle, monsterDamage);
+        monsters.Update(dt, player.GetRectangle(), monsterDamage);
 
-        if (monsterDamage > 0 && playerDamageCooldown <= 0 && playerHealth > 0)
+        if (monsterDamage > 0 && player.health > 0)
         {
-            playerHealth -= 10;
-            playerDamageCooldown = 1.0f;
+            player.TakeDamage(10);
         }
-
-        if (playerHealth < 0)
-            playerHealth = 0;
 
         // ==================================
         // DRAWING
@@ -452,21 +576,21 @@ int main()
 
         if (backgroundLoaded)
         {
-            DrawTexturePro(background, {0, 0, (float)background.width, (float)background.height}, {0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT}, {0, 0}, 0, WHITE);
+            DrawTexturePro(
+                background,
+                {0, 0, (float)background.width, (float)background.height},
+                {0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT},
+                {0, 0},
+                0,
+                WHITE
+            );
         }
 
         // ==================================
         // PLAYER
         // ==================================
 
-        if (playerImageLoaded)
-        {
-            DrawTextureEx(player, {playerX, playerY}, 0.0f, playerScale, WHITE);
-        }
-        else
-        {
-            DrawRectangle((int)playerX, (int)playerY, (int)playerWidth, (int)playerHeight, BLUE);
-        }
+        player.Draw();
 
         // ==================================
         // MONSTERS
@@ -492,11 +616,26 @@ int main()
         // ==================================
 
         DrawText("PLAYER HEALTH", 20, 20, 20, WHITE);
+
         DrawRectangle(20, 50, 200, 20, DARKGRAY);
-        DrawRectangle(20, 50, (int)(200 * ((float)playerHealth / maxPlayerHealth)), 20, GREEN);
+
+        DrawRectangle(
+            20,
+            50,
+            (int)(200 * ((float)player.health / player.maxHealth)),
+            20,
+            GREEN
+        );
+
         DrawRectangleLines(20, 50, 200, 20, WHITE);
 
-        DrawText(TextFormat("%i / %i", playerHealth, maxPlayerHealth), 230, 50, 20, WHITE);
+        DrawText(
+            TextFormat("%i / %i", player.health, player.maxHealth),
+            230,
+            50,
+            20,
+            WHITE
+        );
 
         // ==================================
         // CONTROLS
@@ -509,10 +648,23 @@ int main()
         // GAME OVER
         // ==================================
 
-        if (playerHealth <= 0)
+        if (player.health <= 0)
         {
-            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.65f));
-            DrawText("GAME OVER", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 - 50, 50, RED);
+            DrawRectangle(
+                0,
+                0,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+                Fade(BLACK, 0.65f)
+            );
+
+            DrawText(
+                "GAME OVER",
+                SCREEN_WIDTH / 2 - 150,
+                SCREEN_HEIGHT / 2 - 50,
+                50,
+                RED
+            );
         }
 
         EndDrawing();
@@ -524,8 +676,8 @@ int main()
 
     UnloadTexture(background);
 
-    if (playerImageLoaded)
-        UnloadTexture(player);
+    if (player.texture.id != 0)
+        UnloadTexture(player.texture);
 
     if (monsterImageLoaded)
         UnloadTexture(monsterTexture);
