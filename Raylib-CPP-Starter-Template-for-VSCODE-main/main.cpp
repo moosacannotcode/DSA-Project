@@ -75,6 +75,7 @@ public:
         if (y > SCREEN_HEIGHT - height) y = SCREEN_HEIGHT - height;
     }
 
+
     void Draw()
     {
         if (texture.id != 0)
@@ -104,11 +105,14 @@ public:
             damageCooldown = 1.0f;
         }
     }
+    void Reset(){
+    x = 20;
+    y = SCREEN_HEIGHT - height;
+    health = maxHealth;
+    damageCooldown = 0;}
+
 };
 
-// ==========================================
-// MONSTER CLASS
-// ==========================================
 
 class Monster // monster nodes
 {
@@ -137,6 +141,7 @@ public:
     void Update(float dt)
     {
         position.x -= speed * dt;
+        //subtracting speed from x position to move left across the screen
     }
 
     void Draw(Texture2D texture)
@@ -175,7 +180,7 @@ public:
 // MONSTER LINKED LIST
 // ==========================================
 
-class MonsterList
+class MonsterList  //double linked list for monsters
 {
 private:
     Monster* head;
@@ -195,29 +200,33 @@ public:
 
     void Update(float dt, Rectangle playerRectangle, int& playerDamage)
     {
-        Monster** current = &head;
+        Monster* current = head;
+        Monster* previous = nullptr;
 
-        while (*current != nullptr)
+        while (current != nullptr)
         {
-            Monster* monster = *current;
+            current->Update(dt); //calling monser update function not list ka
 
-            monster->Update(dt);
-
-            if (CheckCollisionRecs(monster->position, playerRectangle))
+            if (CheckCollisionRecs(current->position, playerRectangle) ||
+                current->position.x + current->position.width < 0)
             {
-                playerDamage++;
+                Monster* nodeToDelete = current;
 
-                *current = monster->next;
-                delete monster;
-            }
-            else if (monster->position.x + monster->position.width < 0)
-            {
-                *current = monster->next;
-                delete monster;
+                if (previous == nullptr)
+                    head = current->next;
+                else
+                    previous->next = current->next;
+
+                if (CheckCollisionRecs(nodeToDelete->position, playerRectangle))
+                    playerDamage++;
+
+                current = nodeToDelete->next;
+                delete nodeToDelete;
             }
             else
             {
-                current = &((*current)->next);
+                previous = current;
+                current = current->next;
             }
         }
     }
@@ -244,20 +253,27 @@ public:
 
     void RemoveDeadMonsters()
     {
-        Monster** current = &head;
+        Monster* current = head;
+        Monster* previous = nullptr;
 
-        while (*current != nullptr)
+        while (current != nullptr)
         {
-            Monster* monster = *current;
-
-            if (monster->health <= 0)
+            if (current->health <= 0)
             {
-                *current = monster->next;
-                delete monster;
+                Monster* nodeToDelete = current;
+
+                if (previous == nullptr)
+                    head = current->next;
+                else
+                    previous->next = current->next;
+
+                current = nodeToDelete->next;
+                delete nodeToDelete;
             }
             else
             {
-                current = &((*current)->next);
+                previous = current;
+                current = current->next;
             }
         }
     }
@@ -272,7 +288,16 @@ public:
             current = current->next;
         }
     }
-
+    void Clear(){
+        Monster* current = head;
+        while (current != nullptr)
+        {
+            Monster* temp = current;
+            current = current->next;
+            delete temp;
+        }
+        head=nullptr;
+    }
     ~MonsterList()
     {
         while (head != nullptr)
@@ -284,11 +309,9 @@ public:
     }
 };
 
-// ==========================================
-// BULLET CLASS
-// ==========================================
 
-class Bullet
+
+class Bullet  //will be a singly
 {
 public:
     Vector2 position;
@@ -316,9 +339,7 @@ public:
     }
 };
 
-// ==========================================
-// BULLET LINKED LIST
-// ==========================================
+
 
 class BulletList
 {
@@ -373,27 +394,34 @@ public:
 
     void CheckMonsterCollisions(MonsterList& monsters)
     {
-        Bullet** current = &head;
+        Bullet* current = head;
+        Bullet* previous = nullptr;
 
-        while (*current != nullptr)
+        while (current != nullptr)
         {
-            Bullet* bullet = *current;
-
             Rectangle bulletRectangle = {
-                bullet->position.x - 5,
-                bullet->position.y - 5,
+                current->position.x - 5,
+                current->position.y - 5,
                 10,
                 10
             };
 
-            if (monsters.Hit(bulletRectangle, bullet->damage))
+            if (monsters.Hit(bulletRectangle, current->damage))
             {
-                *current = bullet->next;
-                delete bullet;
+                Bullet* nodeToDelete = current;
+
+                if (previous == nullptr)
+                    head = current->next;
+                else
+                    previous->next = current->next;
+
+                current = nodeToDelete->next;
+                delete nodeToDelete;
             }
             else
             {
-                current = &((*current)->next);
+                previous = current;
+                current = current->next;
             }
         }
 
@@ -402,25 +430,32 @@ public:
 
     void RemoveBullets() // Delete bullets that move off-screen.
     {
-        Bullet** current = &head;
+        Bullet* current = head;
+        Bullet* previous = nullptr;
 
-        while (*current != nullptr)
+        while (current != nullptr)
         {
-            Bullet* bullet = *current;
-
             if (
-                bullet->position.x < 0 ||
-                bullet->position.x > SCREEN_WIDTH ||
-                bullet->position.y < 0 ||
-                bullet->position.y > SCREEN_HEIGHT
+                current->position.x < 0 ||
+                current->position.x > SCREEN_WIDTH ||
+                current->position.y < 0 ||
+                current->position.y > SCREEN_HEIGHT
             )
             {
-                *current = bullet->next;
-                delete bullet;
+                Bullet* nodeToDelete = current;
+
+                if (previous == nullptr)
+                    head = current->next;
+                else
+                    previous->next = current->next;
+
+                current = nodeToDelete->next;
+                delete nodeToDelete;
             }
             else
             {
-                current = &((*current)->next);
+                previous = current;
+                current = current->next;
             }
         }
     }
@@ -435,8 +470,18 @@ public:
             current = current->next;
         }
     }
+    void Clear(){
+    Bullet* current = head;
 
-    ~BulletList()
+    while (current != nullptr)
+    {
+        Bullet* temp = current;
+        current = current->next;
+        delete temp;
+    }
+
+    head = nullptr;}   
+     ~BulletList()
     {
         while (head != nullptr)
         {
@@ -446,234 +491,218 @@ public:
         }
     }
 };
+void StartGame(
+    Player& player,
+    BulletList& bullets,
+    MonsterList& monsters,
+    float& shootTimer,
+    float& monsterSpawnTimer)
+{
+    player.Reset();
 
-// ==========================================
-// MAIN GAME
-// ==========================================
+    bullets.Clear();
+    monsters.Clear();
+
+    shootTimer = 0;
+    monsterSpawnTimer = 0;
+}
+
+enum gamestate
+{
+    MENU,
+    PLAYING,
+    GAME_OVER
+};
 
 int main()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
     SetTargetFPS(60);
 
-    Texture2D playerTexture =
-        LoadTexture("media and assets/masked_figure_transparent.png");
-
-    Texture2D background =
-        LoadTexture("media and assets/temp_gb.png");
-
-    Texture2D monsterTexture =
-        LoadTexture("media and assets/monssterr.jpg");
+    Texture2D playerTexture = LoadTexture("media and assets/masked_figure_transparent.png");
+    Texture2D background = LoadTexture("media and assets/temp_gb.png");
+    Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
 
     bool backgroundLoaded = background.id != 0;
     bool monsterImageLoaded = monsterTexture.id != 0;
 
-    // ======================================
-    // PLAYER
-    // ======================================
-
     Player player(playerTexture);
-
-    // ======================================
-    // BULLETS
-    // ======================================
-
     BulletList bullets;
-
-    float shootTimer = 0.0f;
-    float shootCooldown = 0.2f;
-
-    // ======================================
-    // MONSTERS
-    // ======================================
-
     MonsterList monsters;
 
+    float shootTimer = 0.0f;
+    const float shootCooldown = 0.2f;
     float monsterSpawnTimer = 0.0f;
-    float monsterSpawnInterval = 2.0f;
+    const float monsterSpawnInterval = 2.0f;
 
-    // ======================================
-    // GAME LOOP
-    // ======================================
+    // GAME STATES AND BUTTONS
+    gamestate gameState = MENU;
+
+    Rectangle startButton = {
+        SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 30, 220, 65
+    };
+
+    Rectangle playAgainButton = {
+        SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 55, 220, 65
+    };
 
     while (!WindowShouldClose())
     {
         float dt = GetFrameTime();
+        Vector2 mousePosition = GetMousePosition();
 
-        shootTimer -= dt;
-        monsterSpawnTimer -= dt;
-
-        // ==================================
-        // PLAYER UPDATE
-        // ==================================
-
-        player.Update(dt);
-
-        // ==================================
-        // SHOOTING
-        // ==================================
-
-        if (player.health > 0 &&
-            IsKeyDown(KEY_SPACE) &&
-            shootTimer <= 0)
+        // MENU STATE
+        if (gameState == MENU)
         {
-            Vector2 gunPosition = {
-                player.x + player.width,
-                player.y + player.height / 2.0f
-            };
-
-            Vector2 target = {
-                gunPosition.x + 1,
-                gunPosition.y
-            };
-
-            bullets.Shoot(gunPosition, target);
-
-            shootTimer = shootCooldown;
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+                CheckCollisionPointRec(mousePosition, startButton))
+            {
+                StartGame(player, bullets, monsters, shootTimer, monsterSpawnTimer);
+                gameState = PLAYING;
+            }
         }
 
-        // ==================================
-        // MONSTER SPAWNING
-        // ==================================
-
-        if (monsterSpawnTimer <= 0 && player.health > 0)
+        // PLAYING STATE
+        else if (gameState == PLAYING)
         {
-            monsters.Spawn(monsterTexture);
-            monsterSpawnTimer = monsterSpawnInterval;
+            shootTimer -= dt;
+            monsterSpawnTimer -= dt;
+
+            player.Update(dt);
+
+            // SHOOTING
+            if (player.health > 0 && IsKeyDown(KEY_SPACE) && shootTimer <= 0)
+            {
+                Vector2 gunPosition = {
+                    player.x + player.width,
+                    player.y + player.height / 2.0f
+                };
+
+                Vector2 target = {gunPosition.x + 1, gunPosition.y};
+
+                bullets.Shoot(gunPosition, target);
+                shootTimer = shootCooldown;
+            }
+
+            // MONSTER SPAWNING
+            if (monsterSpawnTimer <= 0 && player.health > 0)
+            {
+                monsters.Spawn(monsterTexture);
+                monsterSpawnTimer = monsterSpawnInterval;
+            }
+
+            // BULLET UPDATE AND COLLISIONS
+            bullets.Update(dt);
+            bullets.CheckMonsterCollisions(monsters);
+            bullets.RemoveBullets();
+
+            // MONSTER UPDATE AND PLAYER DAMAGE
+            int monsterDamage = 0;
+            monsters.Update(dt, player.GetRectangle(), monsterDamage);
+
+            if (monsterDamage > 0 && player.health > 0)
+                player.TakeDamage(10);
+
+            // CHANGE STATE WHEN PLAYER DIES
+            if (player.health <= 0)
+                gameState = GAME_OVER;
         }
 
-        // ==================================
-        // BULLET UPDATES
-        // ==================================
-
-        bullets.Update(dt);
-        bullets.CheckMonsterCollisions(monsters);
-        bullets.RemoveBullets();
-
-        // ==================================
-        // MONSTER UPDATES
-        // ==================================
-
-        int monsterDamage = 0;
-
-        monsters.Update(dt, player.GetRectangle(), monsterDamage);
-
-        if (monsterDamage > 0 && player.health > 0)
+        // GAME OVER STATE
+        else if (gameState == GAME_OVER)
         {
-            player.TakeDamage(10);
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+                CheckCollisionPointRec(mousePosition, playAgainButton))
+            {
+                StartGame(player, bullets, monsters, shootTimer, monsterSpawnTimer);
+                gameState = PLAYING;
+            }
         }
 
-        // ==================================
         // DRAWING
-        // ==================================
-
         BeginDrawing();
         ClearBackground(BLACK);
 
-        // ==================================
-        // BACKGROUND
-        // ==================================
-
+        // Draw background in every state
         if (backgroundLoaded)
         {
             DrawTexturePro(
                 background,
                 {0, 0, (float)background.width, (float)background.height},
                 {0, 0, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT},
-                {0, 0},
-                0,
-                WHITE
+                {0, 0}, 0, WHITE
             );
         }
 
-        // ==================================
-        // PLAYER
-        // ==================================
-
-        player.Draw();
-
-        // ==================================
-        // MONSTERS
-        // ==================================
-
-        if (monsterImageLoaded)
+        // MENU SCREEN
+        if (gameState == MENU)
         {
-            monsters.Draw(monsterTexture);
+            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.55f));
+
+            DrawText("MONSTER SHOOTER",
+                     SCREEN_WIDTH / 2 - 260, 220, 55, WHITE);
+
+            DrawText("Move: ARROW KEYS     Shoot: SPACE",
+                     SCREEN_WIDTH / 2 - 250, 300, 22, LIGHTGRAY);
+
+            bool hovering = CheckCollisionPointRec(mousePosition, startButton);
+            DrawRectangleRec(startButton, hovering ? DARKGREEN : GREEN);
+            DrawRectangleLinesEx(startButton, 2, WHITE);
+
+            DrawText("START",
+                     (int)startButton.x + 70, (int)startButton.y + 17, 30, WHITE);
         }
-        else
+
+        // PLAYING SCREEN
+        else if (gameState == PLAYING)
         {
-            DrawText("MONSTER IMAGE FAILED TO LOAD", 400, 350, 30, RED);
-        }
+            player.Draw();
 
-        // ==================================
-        // BULLETS
-        // ==================================
+            if (monsterImageLoaded)
+                monsters.Draw(monsterTexture);
+            else
+                DrawText("MONSTER IMAGE FAILED TO LOAD", 400, 350, 30, RED);
 
-        bullets.Draw();
+            bullets.Draw();
 
-        // ==================================
-        // PLAYER HEALTH BAR
-        // ==================================
-
-        DrawText("PLAYER HEALTH", 20, 20, 20, WHITE);
-
-        DrawRectangle(20, 50, 200, 20, DARKGRAY);
-
-        DrawRectangle(
-            20,
-            50,
-            (int)(200 * ((float)player.health / player.maxHealth)),
-            20,
-            GREEN
-        );
-
-        DrawRectangleLines(20, 50, 200, 20, WHITE);
-
-        DrawText(
-            TextFormat("%i / %i", player.health, player.maxHealth),
-            230,
-            50,
-            20,
-            WHITE
-        );
-
-        // ==================================
-        // CONTROLS
-        // ==================================
-
-        DrawText("ARROW KEYS: MOVE", 20, 90, 20, WHITE);
-        DrawText("SPACE: SHOOT", 20, 120, 20, WHITE);
-
-        // ==================================
-        // GAME OVER
-        // ==================================
-
-        if (player.health <= 0)
-        {
+            DrawText("PLAYER HEALTH", 20, 20, 20, WHITE);
+            DrawRectangle(20, 50, 200, 20, DARKGRAY);
             DrawRectangle(
-                0,
-                0,
-                SCREEN_WIDTH,
-                SCREEN_HEIGHT,
-                Fade(BLACK, 0.65f)
+                20, 50,
+                (int)(200 * ((float)player.health / player.maxHealth)),
+                20, GREEN
             );
+            DrawRectangleLines(20, 50, 200, 20, WHITE);
 
-            DrawText(
-                "GAME OVER",
-                SCREEN_WIDTH / 2 - 150,
-                SCREEN_HEIGHT / 2 - 50,
-                50,
-                RED
-            );
+            DrawText(TextFormat("%i / %i", player.health, player.maxHealth),
+                     230, 50, 20, WHITE);
+
+            DrawText("ARROW KEYS: MOVE", 20, 90, 20, WHITE);
+            DrawText("SPACE: SHOOT", 20, 120, 20, WHITE);
+        }
+
+        // GAME OVER SCREEN
+        else if (gameState == GAME_OVER)
+        {
+            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.75f));
+
+            DrawText("GAME OVER",
+                     SCREEN_WIDTH / 2 - 165, SCREEN_HEIGHT / 2 - 100, 55, RED);
+
+            bool hovering = CheckCollisionPointRec(mousePosition, playAgainButton);
+            DrawRectangleRec(playAgainButton, hovering ? DARKGREEN : GREEN);
+            DrawRectangleLinesEx(playAgainButton, 2, WHITE);
+
+            DrawText("PLAY AGAIN",
+                     (int)playAgainButton.x + 28,
+                     (int)playAgainButton.y + 17,
+                     30, WHITE);
         }
 
         EndDrawing();
     }
 
-    // ======================================
     // CLEANUP
-    // ======================================
-
     UnloadTexture(background);
 
     if (player.texture.id != 0)
@@ -683,6 +712,5 @@ int main()
         UnloadTexture(monsterTexture);
 
     CloseWindow();
-
     return 0;
 }
