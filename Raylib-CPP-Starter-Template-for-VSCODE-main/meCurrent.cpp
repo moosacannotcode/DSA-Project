@@ -1,82 +1,158 @@
 #include "raylib.h"
 #include <cmath>
+#include <iostream>
+using namespace std;
+
+
+
+class Backtracking
+{
+private:
+
+    int combinations[100][10]; //100 possible max waves of 10 monsters each
+    int combinationCount;
+
+    void GenerateRecursive(
+        int allowed[],  //available health values  (given values)
+        int size,  //total available health ingredients lamo
+        int N,        //values we must select
+        int target,
+        //stuff thats gonna change as we go down the recursion tree
+        int current[],
+        int depth, //values we have selected so far
+        int sum,
+        int startIndex
+    )
+    {
+        // BASE CASE
+        if (depth == N)  //all selected
+        {
+            if (sum == target)//valid combination found and copied
+            {
+                for (int i = 0; i < N; i++)
+                {
+                    combinations[combinationCount][i] = current[i];
+                }
+
+                combinationCount++;
+            }
+
+            return;
+        }
+
+        // RECURSIVE CASE
+        for (int i = startIndex; i < size; i++) //for each allowed value we
+        { 
+            current[depth] = allowed[i];  //selected value 
+
+            GenerateRecursive(
+                allowed,
+                size,
+                N,   //number of monsters per wave
+                target,
+                current,
+                depth + 1,
+                sum + allowed[i],
+                i + 1
+            );
+        }
+    }
+
+public:
+
+    Backtracking()
+    {
+        combinationCount = 0;
+    }
+
+    void Generate(int allowed[], int size, int N, int target)  //cuz game kai douran recursion kou kaam starting value dai ga
+    {
+        combinationCount = 0;
+
+        int current[10];
+
+        GenerateRecursive(
+            allowed,
+            size,
+            N,
+            target,
+            current,
+            0,
+            0,
+            0
+        );  //starting recursion
+    }
+// [image-comments/image-20261122-042843-ltiti4.png]
+
+// [.vscode/image-comments/image-20261122-042843-ltiti4.png]
+
+ int GetCombinationCount()
+{
+    return combinationCount;
+}
+
+int GetHealth(int combinationIndex, int monsterIndex)
+{
+    return combinations[combinationIndex][monsterIndex];
+}
+    void Display(int N)
+    {
+        for (int i = 0; i < combinationCount; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                cout << combinations[i][j] << " ";
+            }
+
+            cout << endl;
+        }
+    }
+};
+
+
+bool SelectWave(
+    Backtracking& bt,
+    int allowed[],
+    int size,
+    int N,
+    int targetHealth,
+    int waveHealth[],
+    int& combinationIndex)
+{
+    bt.Generate(allowed, size, N, targetHealth);
+
+    int count = bt.GetCombinationCount(); //checking for total combinations generated
+
+    if (count == 0) //backtracking kou kuch milla hee nahi
+        return false;
+
+    // Cycle through valid combinations for increasing difficulty hehe
+    combinationIndex = combinationIndex % count; //no loop cuz game hee multiple times call kray ga
+
+    for (int i = 0; i < N; i++)
+    {
+        waveHealth[i] = bt.GetHealth(combinationIndex, i);
+    }
+
+    combinationIndex++;
+
+    return true;
+}
+
 
 int main()
 {
-    // Initialize window
-    InitWindow(1280, 800, "Game screen");
+    int allowed[] = {25, 50, 75, 100, 125, 150};
 
-    SetTargetFPS(60);
+    Backtracking bt;
 
-    Texture2D player = LoadTexture("media and assets/masked_figure_transparent.png");
-    Texture2D background = LoadTexture("media and assets/temp_gb.png");
+    bt.Generate(allowed, 6, 3, 225);
 
-    bool imageLoaded = (player.id != 0);
-
-    float scale = 0.25f;
-    float backgroundScale = 0.625f;
-
-    // Calculate scaled player dimensions
-    float playerWidth = player.width * scale;
-    float playerHeight = player.height * scale;
-
-    // Player position
-    float playerX = (1280 - playerWidth) / 2.0f;
-    float playerY = 800 - playerHeight;
-
-    float playerSpeed = 5.0f;
-
-    // Game loop
-    while (!WindowShouldClose())
-    {
-        if (imageLoaded)
-        {
-            if (IsKeyDown(KEY_LEFT))
-                playerX -= playerSpeed;
-
-            if (IsKeyDown(KEY_RIGHT))
-                playerX += playerSpeed;
-
-            // Screen boundaries
-            if (playerX < 0)
-                playerX = 0;
-
-            if (playerX > 1280 - playerWidth)
-                playerX = 1280 - playerWidth;
-        }
-
-        // Drawing
-        BeginDrawing();
-
-        ClearBackground(BLACK);
-        DrawTexturePro(
-           background,
-           {0, 0, (float)background.width, (float)background.height},
-            {0, 0, 1280, 800},
-            {0, 0},
-                  0,
-                 WHITE
-        );
-
-        if (imageLoaded)
-        {
-            Vector2 position = {playerX, playerY};
-            DrawTextureEx(player, position, 0.0f, scale, WHITE);
-        }
-        else
-        {
-            DrawText("IMAGE FAILED TO LOAD!", 400, 350, 30, RED);
-        }
-
-        EndDrawing();
-    }
-
-    UnloadTexture(background);
-
-    if (imageLoaded)
-        UnloadTexture(player);
-
-    CloseWindow();
+    bt.Display(3);
 
     return 0;
 }
+
+// [Backtracking documentation](documentation/backtracking.md)
+
+// documentation/backtracking.md

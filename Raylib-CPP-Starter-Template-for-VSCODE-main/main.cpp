@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include <cmath>
-
+#include <iostream>
+using namespace std;
 // ==========================================
 // SCREEN SETTINGS
 // ==========================================
@@ -11,6 +12,152 @@ const int SCREEN_HEIGHT = 800;
 // ==========================================
 // PLAYER
 // ==========================================
+#include "raylib.h"
+#include <cmath>
+#include <iostream>
+using namespace std;
+
+
+
+class Backtracking
+{
+private:
+
+    int combinations[100][10]; //100 possible max waves of 10 monsters each
+    int combinationCount;
+
+    void GenerateRecursive(
+        int allowed[],  //available health values  (given values)
+        int size,  //total available health ingredients lamo
+        int N,        //values we must select
+        int target,
+        //stuff thats gonna change as we go down the recursion tree
+        int current[],
+        int depth, //values we have selected so far
+        int sum,
+        int startIndex
+    )
+    {
+        // BASE CASE
+        if (depth == N)  //all selected
+        {
+            if (sum == target)//valid combination found and copied
+            {
+                for (int i = 0; i < N; i++)
+                {
+                    combinations[combinationCount][i] = current[i];
+                }
+
+                combinationCount++;
+            }
+
+            return;
+        }
+
+        // RECURSIVE CASE
+        for (int i = startIndex; i < size; i++) //for each allowed value we
+        { 
+            current[depth] = allowed[i];  //selected value 
+
+            GenerateRecursive(
+                allowed,
+                size,
+                N,   //number of monsters per wave
+                target,
+                current,
+                depth + 1,
+                sum + allowed[i],
+                i + 1
+            );
+        }
+    }
+
+public:
+
+    Backtracking()
+    {
+        combinationCount = 0;
+    }
+
+    void Generate(int allowed[], int size, int N, int target)  //cuz game kai douran recursion kou kaam starting value dai ga
+    {
+        combinationCount = 0;
+
+        int current[10];
+
+        GenerateRecursive(
+            allowed,
+            size,
+            N,
+            target,
+            current,
+            0,
+            0,
+            0
+        );  //starting recursion
+    }
+// [image-comments/image-20261122-042843-ltiti4.png]
+
+// [.vscode/image-comments/image-20261122-042843-ltiti4.png]
+
+ int GetCombinationCount()
+{
+    return combinationCount;
+}
+
+int GetHealth(int combinationIndex, int monsterIndex)
+{
+    return combinations[combinationIndex][monsterIndex];
+}
+    void Display(int N)
+    {
+        for (int i = 0; i < combinationCount; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                cout << combinations[i][j] << " ";
+            }
+
+            cout << endl;
+        }
+    }
+};
+
+
+bool SelectWave(
+    Backtracking& bt,
+    int allowed[],
+    int size,
+    int N,
+    int targetHealth,
+    int waveHealth[],
+    int& combinationIndex)
+{
+    bt.Generate(allowed, size, N, targetHealth);
+
+    if (combinationIndex >= count)
+    return false;
+
+    if (count == 0) //backtracking kou kuch milla hee nahi
+        return false;
+
+    // Cycle through valid combinations for increasing difficulty hehe
+    combinationIndex = combinationIndex % count; //no loop cuz game hee multiple times call kray ga
+
+    for (int i = 0; i < N; i++)
+    {
+        waveHealth[i] = bt.GetHealth(combinationIndex, i);
+    }
+
+    combinationIndex++;
+
+    return true;
+}
+
+
+// [Backtracking documentation](documentation/backtracking.md)
+
+// documentation/backtracking.md
 
 class Player
 {
@@ -122,20 +269,20 @@ public:
     bool hasBeenHit;
     Monster* next;
 
-    Monster(Texture2D texture)
-    {
-        position = {
-            (float)SCREEN_WIDTH + 50,
-            (float)GetRandomValue(50, SCREEN_HEIGHT - 150),
-            100,
-            100
+    Monster(Texture2D texture, int monsterHealth){
+    position = {
+        (float)SCREEN_WIDTH + 50,
+        (float)GetRandomValue(50, SCREEN_HEIGHT - 150),
+        100,
+        100
         };
-
-        speed = (float)GetRandomValue(100, 180);
-        health = 100;
-        hasBeenHit = false;
-        next = nullptr;
+       // [image-comments/image-20261122-044145-nxyw9t.png]
+     speed = (float)GetRandomValue(100, 180);
+     health = monsterHealth;
+     hasBeenHit = false;
+     next = nullptr;
     }
+
 
     void Update(float dt)
     {
@@ -169,12 +316,13 @@ public:
         head = nullptr;
     }
 
-    void Spawn(Texture2D texture)
-    {
-        Monster* newMonster = new Monster(texture);
-        newMonster->next = head;
-        head = newMonster;
+    void Spawn(Texture2D texture, int monsterHealth){ //insert new monster at the head of the list
+     Monster* newMonster = new Monster(texture, monsterHealth);
+
+     newMonster->next = head;
+     head = newMonster;
     }
+
 
     void Update(float dt, Rectangle playerRectangle, int& playerDamage)
     {
@@ -278,6 +426,10 @@ public:
 
         head = nullptr;
     }
+
+    bool IsEmpty(){
+    return head == nullptr;
+}
 
     ~MonsterList()
     {
@@ -618,7 +770,26 @@ int main()
     float fireflySpawnTimer = 3.0f;
     const float fireflySpawnInterval = 5.0f;
     float healMessageTimer = 0.0f;
+    // WAVE SYSTEM
 
+  int allowed[] = {25, 50, 75, 100, 125, 150};
+
+Backtracking bt;
+
+int currentWave = 1;
+int monstersPerWave = 3;
+int monstersSpawned = 0;
+int nextMonsterIndex = 0;
+
+int targetHealth = 225;
+int waveHealth[10];
+
+int combinationIndex = 0;
+
+bool validWave = SelectWave(
+    bt, allowed, 6, monstersPerWave,
+    targetHealth, waveHealth, combinationIndex
+);
     gamestate gameState = MENU;
 
     Rectangle startButton = {SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 30, 220, 65};
@@ -668,9 +839,15 @@ int main()
 
             // MONSTER SPAWNING
 
-            if (monsterSpawnTimer <= 0 && player.health > 0)
+           if (monsterSpawnTimer <= 0 && player.health > 0 && monstersSpawned < monstersPerWave)
             {
-                monsters.Spawn(monsterTexture);
+                     monsters.Spawn(
+                     monsterTexture,
+                     waveHealth[nextMonsterIndex]
+             );
+
+                monstersSpawned++;
+                nextMonsterIndex++;
                 monsterSpawnTimer = monsterSpawnInterval;
             }
 
@@ -687,7 +864,34 @@ int main()
 
             if (monsterDamage > 0 && player.health > 0)
                 player.TakeDamage(10);
+            
 
+            // WAVE COMPLETION
+
+        if (monstersSpawned == monstersPerWave && monsters.IsEmpty())
+            {
+              monstersSpawned = 0;
+              nextMonsterIndex = 0;
+
+                // Select the next health combination
+               validWave = SelectWave(bt, allowed, 6, monstersPerWave,targetHealth, waveHealth, combinationIndex);
+
+        // All combinations for this difficulty have been used
+           if (!validWave)
+            {
+           targetHealth += 25;
+          combinationIndex = 0;
+
+           validWave = SelectWave(
+              bt, allowed, 6, monstersPerWave,
+             targetHealth, waveHealth, combinationIndex
+            );
+           }
+
+         currentWave++;
+
+          monsterSpawnTimer = 2.0f;
+        }
             // ==========================================
             // FIREFLY SPAWNING
             // ==========================================
