@@ -796,7 +796,7 @@ enum gamestate
 
 int main()
 {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Guts In The Gutter");
     InitAudioDevice();
     SetTargetFPS(60);
 
