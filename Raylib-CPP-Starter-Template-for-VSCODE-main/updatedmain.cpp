@@ -273,7 +273,8 @@ public:
     bool hasBeenHit;
     Monster* next;
 
-    Monster(Texture2D texture, int monsterHealth){
+    Monster(Texture2D texture, int monsterHealth, float waveSpeedFactor)
+    {
     position = {
         (float)SCREEN_WIDTH + 50,
         (float)GetRandomValue(50, SCREEN_HEIGHT - 150),
@@ -281,8 +282,9 @@ public:
         100
         };
        // [image-comments/image-20261122-044145-nxyw9t.png]
-     speed = (float)GetRandomValue(100, 180);
+     speed = (float)GetRandomValue(100, 180) * waveSpeedFactor;
      health = monsterHealth;
+     maxHealth = monsterHealth;
      hasBeenHit = false;
      next = nullptr;
     }
@@ -320,8 +322,9 @@ public:
         head = nullptr;
     }
 
-    void Spawn(Texture2D texture, int monsterHealth){ //insert new monster at the head of the list
-     Monster* newMonster = new Monster(texture, monsterHealth);
+    void Spawn(Texture2D texture, int monsterHealth, float waveSpeedBonus)
+    { //insert new monster at the head of the list
+     Monster* newMonster = new Monster(texture, monsterHealth, waveSpeedBonus);
 
      newMonster->next = head;
      head = newMonster;
@@ -762,7 +765,7 @@ void StartGame(
     combinationIndex = 0;
 
     validWave = SelectWave(
-        bt, allowed, 15, monstersPerWave,
+        bt, allowed, 15, monstersPerWave,  //allowdSize variable manually edit 
         targetHealth, waveHealth, combinationIndex
     );
 }
@@ -810,6 +813,7 @@ int main()
     float healMessageTimer = 0.0f;
     float waveCompleteTimer = 0.0f;
     const float waveCompleteDuration = 2.0f;
+    const float monsterSpeedFactor = 1.30f;
     // WAVE SYSTEM
 
   int allowed[] = {
@@ -886,7 +890,8 @@ bool validWave = false;
             {
                      monsters.Spawn(
                      monsterTexture,
-                     waveHealth[nextMonsterIndex]
+                     waveHealth[nextMonsterIndex],
+                     pow(monsterSpeedFactor, currentWave - 1)
              );
 
                 monstersSpawned++;
