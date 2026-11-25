@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include <cmath>
 #include <iostream>
+#include <fstream>
 using namespace std;
 // ==========================================
 // SCREEN SETTINGS
@@ -364,7 +365,7 @@ public:
         }
     }
 
-    bool Hit(Rectangle bulletRectangle, int bulletDamage)
+    bool Hit(Rectangle bulletRectangle, int bulletDamage, int& score)
     {
         Monster* current = head;
 
@@ -372,7 +373,10 @@ public:
         {
             if (CheckCollisionRecs(current->position, bulletRectangle))
             {
+                int previousHealth = current->health;
                 current->health -= bulletDamage;
+                if (previousHealth > 0 && current->health <= 0)
+                    score += 100;
                 current->hasBeenHit = true;
                 return true;
             }
@@ -521,7 +525,7 @@ public:
         }
     }
 
-    void CheckMonsterCollisions(MonsterList& monsters)
+    void CheckMonsterCollisions(MonsterList& monsters, int& score)
     {
         Bullet* current = head;
         Bullet* previous = nullptr;
@@ -530,7 +534,7 @@ public:
         {
             Rectangle bulletRectangle = {current->position.x - 5, current->position.y - 5, 10, 10};
 
-            if (monsters.Hit(bulletRectangle, current->damage))
+            if (monsters.Hit(bulletRectangle, current->damage, score))
             {
                 Bullet* nodeToDelete = current;
 
@@ -745,9 +749,11 @@ void StartGame(
     int& targetHealth,
     int waveHealth[],
     int& combinationIndex,
-    bool& validWave)
+    bool& validWave,
+    int& score)
 {
     player.Reset();
+    score = 0;
     bullets.Clear();
     monsters.Clear();
     fireflies.Clear();
@@ -791,11 +797,14 @@ enum gamestate
 int main()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
+    InitAudioDevice();
     SetTargetFPS(60);
 
     Texture2D playerTexture = LoadTexture("media and assets/masked_figure_transparent.png");
     Texture2D background = LoadTexture("media and assets/temp_gb.png");
     Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
+    Music backgroundMusic = LoadMusicStream("media and assets/Reach Out To The Truth (Instrumental).mp3");
+    PlayMusicStream(backgroundMusic);
 
     bool backgroundLoaded = background.id != 0;
     bool monsterImageLoaded = monsterTexture.id != 0;
@@ -839,6 +848,13 @@ int waveHealth[10];
 int combinationIndex = 0;
 
 bool validWave = false;
+    int score = 0;
+    int highScore = 0;
+
+    ifstream highScoreFile("highscore.txt");
+    if (highScoreFile)
+        highScoreFile >> highScore;
+
     gamestate gameState = MENU;
 
     Rectangle startButton = {SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 30, 220, 65};
@@ -848,6 +864,8 @@ bool validWave = false;
     {
         float dt = GetFrameTime();
         Vector2 mousePosition = GetMousePosition();
+        UpdateMusicStream(backgroundMusic);
+        SetMusicVolume(backgroundMusic, 0.8f);
 
         // ==========================================
         // MENU STATE
@@ -857,7 +875,7 @@ bool validWave = false;
         {
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mousePosition, startButton))
             {
-                StartGame(player, bullets, monsters, fireflies, shootTimer, monsterSpawnTimer, fireflySpawnTimer, healMessageTimer, waveCompleteTimer, bt, allowed, monstersPerWave, currentWave, monstersSpawned, nextMonsterIndex, targetHealth, waveHealth, combinationIndex, validWave);
+                StartGame(player, bullets, monsters, fireflies, shootTimer, monsterSpawnTimer, fireflySpawnTimer, healMessageTimer, waveCompleteTimer, bt, allowed, monstersPerWave, currentWave, monstersSpawned, nextMonsterIndex, targetHealth, waveHealth, combinationIndex, validWave, score);
                 gameState = PLAYING;
             }
         }
@@ -905,7 +923,14 @@ bool validWave = false;
             // BULLET UPDATE AND COLLISIONS
 
             bullets.Update(dt);
-            bullets.CheckMonsterCollisions(monsters);
+            bullets.CheckMonsterCollisions(monsters, score);
+            if (score > highScore)
+            {
+                highScore = score;
+                ofstream highScoreFile("highscore.txt");
+                if (highScoreFile)
+                    highScoreFile << highScore;
+            }
             bullets.RemoveBullets();
 
             // MONSTER UPDATE AND PLAYER DAMAGE
@@ -1012,7 +1037,7 @@ bool validWave = false;
         {
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mousePosition, playAgainButton))
             {
-                StartGame(player, bullets, monsters, fireflies, shootTimer, monsterSpawnTimer, fireflySpawnTimer, healMessageTimer, waveCompleteTimer, bt, allowed, monstersPerWave, currentWave, monstersSpawned, nextMonsterIndex, targetHealth, waveHealth, combinationIndex, validWave);
+                StartGame(player, bullets, monsters, fireflies, shootTimer, monsterSpawnTimer, fireflySpawnTimer, healMessageTimer, waveCompleteTimer, bt, allowed, monstersPerWave, currentWave, monstersSpawned, nextMonsterIndex, targetHealth, waveHealth, combinationIndex, validWave, score);
                 gameState = PLAYING;
             }
         }
@@ -1056,6 +1081,7 @@ bool validWave = false;
             DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.55f));
 
             DrawText("MONSTER SHOOTER", SCREEN_WIDTH / 2 - 260, 220, 55, WHITE);
+            DrawText(TextFormat("HIGH SCORE: %i", highScore), SCREEN_WIDTH / 2 - 110, 275, 22, GOLD);
             DrawText("Move: ARROW KEYS     Shoot: SPACE", SCREEN_WIDTH / 2 - 250, 300, 22, LIGHTGRAY);
 
             bool hovering = CheckCollisionPointRec(mousePosition, startButton);
@@ -1096,6 +1122,9 @@ bool validWave = false;
 // ==========================================
 // HEALTH HUD - BOTTOM LEFT
 // ==========================================
+
+DrawText(TextFormat("SCORE: %i", score), 25, 585, 22, SKYBLUE);
+DrawText(TextFormat("HIGH SCORE: %i", highScore), 25, 615, 20, SKYBLUE);
 
 DrawText("PLAYER HEALTH", 25, 665, 20, LIME);
 
@@ -1146,6 +1175,8 @@ if (healMessageTimer > 0)
             DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.78f));
             DrawText("ALL WAVES CLEARED!", SCREEN_WIDTH / 2 - 275,
                 SCREEN_HEIGHT / 2 - 35, 45, GOLD);
+            DrawText(TextFormat("YOUR SCORE: %i", score), SCREEN_WIDTH / 2 - 120, SCREEN_HEIGHT / 2 + 25, 25, WHITE);
+            DrawText(TextFormat("HIGH SCORE: %i", highScore), SCREEN_WIDTH / 2 - 125, SCREEN_HEIGHT / 2 + 60, 25, GOLD);
         }
 
         // ==========================================
@@ -1157,6 +1188,8 @@ if (healMessageTimer > 0)
             DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.75f));
 
             DrawText("GAME OVER", SCREEN_WIDTH / 2 - 165, SCREEN_HEIGHT / 2 - 100, 55, RED);
+            DrawText(TextFormat("YOUR SCORE: %i", score), SCREEN_WIDTH / 2 - 120, SCREEN_HEIGHT / 2 - 35, 25, WHITE);
+            DrawText(TextFormat("HIGH SCORE: %i", highScore), SCREEN_WIDTH / 2 - 125, SCREEN_HEIGHT / 2, 25, GOLD);
 
             bool hovering = CheckCollisionPointRec(mousePosition, playAgainButton);
             DrawRectangleRec(playAgainButton, hovering ? DARKGREEN : GREEN);
@@ -1179,7 +1212,9 @@ if (healMessageTimer > 0)
 
     if (monsterImageLoaded)
         UnloadTexture(monsterTexture);
-
+    UnloadMusicStream(backgroundMusic);
+    CloseAudioDevice();
+    
     CloseWindow();
 
     return 0;
