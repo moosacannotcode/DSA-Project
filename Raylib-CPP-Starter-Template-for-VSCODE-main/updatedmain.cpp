@@ -331,7 +331,7 @@ public:
     }
 
 
-    void Update(float dt, Rectangle playerRectangle, int& playerDamage)
+    void Update(float dt, Rectangle playerRectangle, int& playerDamage, bool& monsterEscaped)
     {
         Monster* current = head;
         Monster* previous = nullptr;
@@ -351,6 +351,8 @@ public:
 
                 if (CheckCollisionRecs(nodeToDelete->position, playerRectangle))
                     playerDamage++;
+                else
+                    monsterEscaped = true;
 
                 current = nodeToDelete->next;
                 delete nodeToDelete;
@@ -908,7 +910,11 @@ bool validWave = false;
             // MONSTER UPDATE AND PLAYER DAMAGE
 
             int monsterDamage = 0;
-            monsters.Update(dt, player.GetRectangle(), monsterDamage);
+            bool monsterEscaped = false;
+            monsters.Update(dt, player.GetRectangle(), monsterDamage, monsterEscaped);
+
+            if (monsterEscaped)
+                player.health = 0;
 
             if (monsterDamage > 0 && player.health > 0)
                 player.TakeDamage(10);
