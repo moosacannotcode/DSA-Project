@@ -278,8 +278,8 @@ public:
     position = {
         (float)SCREEN_WIDTH + 50,
         (float)GetRandomValue(50, SCREEN_HEIGHT - 150),
-        100,
-        100
+        150,
+        150
         };
        // [image-comments/image-20261122-044145-nxyw9t.png]
      // Random base speed is multiplied by the wave's speed factor.
@@ -477,7 +477,7 @@ public:
 
     void Draw()
     {
-        DrawCircleV(position, 5, LIME);
+        DrawCircleV(position, 5, YELLOW);
     }
 };
 
@@ -802,12 +802,16 @@ int main()
 
     Texture2D playerTexture = LoadTexture("media and assets/masked_figure_transparent.png");
     Texture2D background = LoadTexture("media and assets/temp_gb.png");
-    Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
+    Texture2D monsterTexture = LoadTexture("media and assets/moonstaar.png");
+    Texture2D menuMonsterTexture = LoadTexture("media and assets/BOO.png");
+    Texture2D gameTitleTexture = LoadTexture("media and assets/yayyy mao logo.png");
     Music backgroundMusic = LoadMusicStream("media and assets/Reach Out To The Truth (Instrumental).mp3");
     PlayMusicStream(backgroundMusic);
 
     bool backgroundLoaded = background.id != 0;
     bool monsterImageLoaded = monsterTexture.id != 0;
+    bool menuMonsterLoaded = menuMonsterTexture.id != 0;
+    bool gameTitleLoaded = gameTitleTexture.id != 0;
 
     Player player(playerTexture);
     BulletList bullets;
@@ -857,7 +861,7 @@ bool validWave = false;
 
     gamestate gameState = MENU;
 
-    Rectangle startButton = {SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 30, 220, 65};
+    Rectangle startButton = {70, 690, 240, 65};
     Rectangle playAgainButton = {SCREEN_WIDTH / 2.0f - 110, SCREEN_HEIGHT / 2.0f + 55, 220, 65};
 
     while (!WindowShouldClose())
@@ -1080,14 +1084,39 @@ bool validWave = false;
         {
             DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Fade(BLACK, 0.55f));
 
-            DrawText("MONSTER SHOOTER", SCREEN_WIDTH / 2 - 260, 220, 55, WHITE);
-            DrawText(TextFormat("HIGH SCORE: %i", highScore), SCREEN_WIDTH / 2 - 110, 275, 22, GOLD);
-            DrawText("Move: ARROW KEYS     Shoot: SPACE", SCREEN_WIDTH / 2 - 250, 300, 22, LIGHTGRAY);
+            if (menuMonsterLoaded)
+            {
+                float monsterScale = fminf(640.0f / menuMonsterTexture.width, 760.0f / menuMonsterTexture.height);
+                float monsterWidth = menuMonsterTexture.width * monsterScale;
+                float monsterHeight = menuMonsterTexture.height * monsterScale;
+                Rectangle monsterDestination = {
+                    640.0f + (640.0f - monsterWidth) / 2.0f,
+                    (800.0f - monsterHeight) / 2.0f,
+                    monsterWidth,
+                    monsterHeight
+                };
+                DrawTexturePro(menuMonsterTexture,
+                    {0, 0, (float)menuMonsterTexture.width, (float)menuMonsterTexture.height},
+                    monsterDestination, {0, 0}, 0, WHITE);
+            }
+
+            if (gameTitleLoaded)
+            {
+                float titleScale = fminf(520.0f / gameTitleTexture.width, 170.0f / gameTitleTexture.height);
+                float titleWidth = gameTitleTexture.width * titleScale;
+                float titleHeight = gameTitleTexture.height * titleScale;
+                Rectangle titleDestination = {50, 475, titleWidth, titleHeight};
+                DrawTexturePro(gameTitleTexture,
+                    {0, 0, (float)gameTitleTexture.width, (float)gameTitleTexture.height},
+                    titleDestination, {0, 0}, 0, WHITE);
+            }
+
+            DrawText(TextFormat("HIGH SCORE: %i", highScore), 70, 655, 22, GOLD);
 
             bool hovering = CheckCollisionPointRec(mousePosition, startButton);
             DrawRectangleRec(startButton, hovering ? DARKGREEN : GREEN);
             DrawRectangleLinesEx(startButton, 2, WHITE);
-            DrawText("START", (int)startButton.x + 70, (int)startButton.y + 17, 30, WHITE);
+            DrawText("START GAME", (int)startButton.x + 30, (int)startButton.y + 17, 27, WHITE);
         }
 
         // ==========================================
@@ -1212,6 +1241,10 @@ if (healMessageTimer > 0)
 
     if (monsterImageLoaded)
         UnloadTexture(monsterTexture);
+    if (menuMonsterLoaded)
+        UnloadTexture(menuMonsterTexture);
+    if (gameTitleLoaded)
+        UnloadTexture(gameTitleTexture);
     UnloadMusicStream(backgroundMusic);
     CloseAudioDevice();
     
