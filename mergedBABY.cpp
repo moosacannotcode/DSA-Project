@@ -791,11 +791,14 @@ enum gamestate
 int main()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Monster Shooter");
+    InitAudioDevice();
     SetTargetFPS(60);
 
     Texture2D playerTexture = LoadTexture("media and assets/masked_figure_transparent.png");
     Texture2D background = LoadTexture("media and assets/temp_gb.png");
     Texture2D monsterTexture = LoadTexture("media and assets/monssterr.jpg");
+    Music backgroundMusic = LoadMusicStream("media and assets/Reach Out To The Truth (Instrumental).mp3");
+    PlayMusicStream(backgroundMusic);
 
     bool backgroundLoaded = background.id != 0;
     bool monsterImageLoaded = monsterTexture.id != 0;
@@ -848,6 +851,8 @@ bool validWave = false;
     {
         float dt = GetFrameTime();
         Vector2 mousePosition = GetMousePosition();
+        UpdateMusicStream(backgroundMusic);
+        SetMusicVolume(backgroundMusic, 0.8f);
 
         // ==========================================
         // MENU STATE
@@ -1179,7 +1184,9 @@ if (healMessageTimer > 0)
 
     if (monsterImageLoaded)
         UnloadTexture(monsterTexture);
-
+    UnloadMusicStream(backgroundMusic);
+    CloseAudioDevice();
+    
     CloseWindow();
 
     return 0;
